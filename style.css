@@ -73,12 +73,34 @@ a.button:hover {
     flex-direction:column;
 }
 
-#code {
+#code, .trace {
     border: 1px #008CBA dashed;
     border-radius: 5px;
     flex-grow: 1;
     padding: 5px;
+    padding-top:0.6em;
+    margin-top: 0em;
 }    
+
+.trace li {
+    margin: 5px;
+    list-style: none;
+    border-radius: 1em;
+    padding: 0.5em;
+    display: inline-block;
+    border: 2px solid;
+}
+
+li.negative, .errform {
+    background-color: hsl(0, 70%, 90%);
+    color:hsl(0, 100%, 30%);
+    border-color:hsl(0, 100%, 30%);
+}
+li.positive {
+    background-color: hsl(85, 70%, 90%);
+    color: hsl(85, 100%, 30%);
+    border-color:hsl(85, 100%, 30%);
+}
 .code {
     font-family: 'Monospace';
     white-space: pre;
