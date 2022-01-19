@@ -17,10 +17,11 @@
 </header>
 <h1 id="ipa-to-petri-nets-documentation">IPA to Petri Nets (documentation)</h1>
 <p><a href="index.html">Link to the webapp</a></p>
-<p>IPA to Petri net is a companion implementation for the papier <em>The Concurrent Games Abstract Machine</em>. It implements the translation from IPA to coloured Petri nets, and allows the user to explore runs of the resulting net.</p>
+<p>IPA to Petri net is a companion implementation for the papier <em>Geometry of Causality: Multi-Token Geometry of Interaction and its Causal Unfolding</em>. It implements the translation from IPA to coloured Petri nets, and allows the user to explore runs of the resulting net.</p>
 <h2 id="input-language">Input language</h2>
 <p>We have try to stick to the presentation of the paper. The examples are a good showcase of the syntax, and we hope that these are self-explanatory. A main difference with the paper is the use of <code>()</code> instead of <code>skip</code>.</p>
 <p>The typing inference only infers types for the simply-typed lambda-calculus using constraints. This means that possible polymorphism is instanciated to unit before computing the net (for instance the term <code>x</code> is inferred as <code>x : unit ⊦ x : unit</code>).</p>
+<p>Moreover, some typing constraints are not checked by the typer. In particular conditionals with higher-order branches or higher-order blocks in <code>newref</code> and <code>newsem</code> are not rejected by the typechecker but give rise to invalid nets.</p>
 <h2 id="displaying-nets">Displaying nets</h2>
 <p>The display of the net mostly follows the same convention as in the paper:</p>
 <ul>
@@ -28,13 +29,16 @@
 <li>Transitions in red are negative; in green positive; and in blue neutral.</li>
 </ul>
 <p>To help the reader we have chosen to include <em>pointer links</em>. If a negative transition corresponds to a multiplicative address which is not minimal in the game, a dotted arrow will be included from any transition (necessarily positive) on the justifying address to that address. For instance, this means that there is an arrow from “Program called function f”, and “Context is returning from that call”.</p>
+<p>Below the source code, is the current causal visible run where the visible action of the current action are displayed along with the reconstructed causality.</p>
 <h2 id="enabled-transitions">Enabled transitions</h2>
 <p>Transitions that are enabled are dashed (a transition is enabled when every location in its pre-condition set holds at least a token). In theory, negative transition (without pre conditions) are always enabled. The implementation only allows to explore legal plays of the game. This means that a negative transition is only enabled when a transition on its justifying address has been fired before (In the previous example: for context to return from f, Program must have called f before). Moreover, some negative transition are linear, which means they can only be fired once in a legal play; or in general once per token output on a justifying transition. In contrast, nonlinear negative transitions can be fired as many times as one wants, provided they are enabled.</p>
 <p>In particular, at the beginning only one transition is enabled: the initial negative transition.</p>
 <h2 id="firing-transition">Firing transition</h2>
 <p>To fire an enabled transition, simply click on it. If there are several tokens at one or several pre-conditions of the transition, the interface asks the user to choose a particular token in each location.</p>
 <p>Firing an enabled transition executes the transition function. Since transition functions, a particular set of input token may be rejected. If so the tokens are not consumed and a message is displayed.</p>
-<p>Firing negative transition generates a new token from Context. Depending on the type, the interface asks the user to input a value for the data. The exponential stack is then generated out of that of the <em>last</em> token which was outputted in a justifying (positive) transition.</p>
+<p>Firing negative transition generates a new token from Context. Depending on the type, the interface asks the user to input a value for the data. If there might be several justifying moves for the token to be generated, then the user can select which one to use from the causal run (once again, the allowed choices are dotted).</p>
+<h2 id="reverse-mode">Reverse mode</h2>
+<p>By default, the net is in forward mode – showing which transaction can be fired. By clicking on <em>reverse mode</em>, the user can undo any maximal transition in the causal run, not necessarily in the order in which they have been performed.</p>
 </div>
 </body>
 </html>
