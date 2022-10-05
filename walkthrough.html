@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    
+    
+    <meta name="description" content="  IPA to Petri Nets is a companion implementation of the paper *The Geometry of Causality*. It imple">
+    
+    <title>IPA to Petri Nets: Documentation - CodiMD</title>
+    <link rel="icon" type="image/png" href="https://notes.inria.fr/favicon.png">
+    <link rel="apple-touch-icon" href="https://notes.inria.fr/apple-touch-icon.png">
+  
+    <link rel="stylesheet" href='https://notes.inria.fr/build/emojify.js/dist/css/basic/emojify.min.css'>
+    <link rel="stylesheet" href='https://notes.inria.fr/css/font.css'>
+    <link rel="stylesheet" href='https://notes.inria.fr/build/fork-awesome/css/fork-awesome.min.css'>
+    <link href="https://notes.inria.fr/build/pretty-styles-pack.css" rel="stylesheet"><link href="https://notes.inria.fr/build/pretty-styles.css" rel="stylesheet"><link href="https://notes.inria.fr/build/pretty.css" rel="stylesheet">
+  
+</head>
+
+<body style="display:none;">
+    <div id="doc" class="container markdown-body">---
+title: &#34;IPA to Petri Nets: Documentation&#34;
+---
+
+IPA to Petri Nets is a companion implementation of the paper *The Geometry of Causality*. It implements a translation from IPA, a call-by-name concurrent higher-order programming language to certain Petri Nets, leveraging ideas from concurrent game semantics and the geometry of interaction.
+
+Concretely, it is a webapp that allows the user to:
+
+- Compute the Petri Net from a given IPA program.
+- Interactively explore executions of the Petri Net.
+- Display the &#34;causal causal run&#34;, a semantic object extracted from the execution by a causal analysis.
+
+# Brief overview of the app
+
+The app has two modes:
+
+- ***Editing mode***, (the mode the app starts in): which lets you enter an IPA program or load an example (which can be selected via the box on the bottom left). Clicking `Compute the interpretation` switches to `Interaction mode`
+- ***Interaction mode***: in this mode, a particular program is loaded, and the interface displays the program (upper left), the resulting net (right), and the current execution &#34;visible causal run&#34; (bottom right), which is empty at the beginning. In this mode, the net can be observed and tokens can be thrown in and moved across the net.
+
+## *Editing mode*: Idealised Parallel Algol (IPA)
+
+The editing mode lets you write a program in our source language, IPA. IPA is a call-by-name $λ$-calculus extended with shared memory concurrency. We mostly follow the syntactic conventions of the paper. The grammar is given by:
+
+```cpp
+M, N ::=
+// λ-calculus
+| x | (fun x -&gt; M) | M N
+// Fixpoint combinator
+| Y M
+// Do nothing, Sequential Composition
+| skip | M; N
+// Parallel Composition
+| (M | N)
+// Integer and boolean operations
+| n | M + N | if M then N else N&#39; | ...
+// Let
+| let x = M in N
+// References
+| newref r in M | M := N | !M
+// Semaphores
+| newsem s in M | grab(M) | release(M)
+```
+
+We advise the reader to load a few examples at the beginning (bottom left), to get a feel for the syntax.
+
+## *Interaction mode*: Playing with nets
+
+Once you have selected an example or typed a program and clicked `Compute the interpretation`, the webapp switches into *Interaction mode* which lets you see the net of a program.
+
+We suggest the user follows the following explanation on [this example](https://ipatopetrinets.github.io/#1) which is an example of a race between a write and a read to the same location.
+
+### Petri Nets
+
+On the right, the web interface displays the Petri net of the program, which concretely takes the form of a bipartite graph with rectangles (transitions) and circles (places). The net for the example program should look like:
+
+![Picture of the net](https://ipatopetrinets.github.io/doc/screens/net.png)
+
+#### Places and transitions 
+Petri Nets are a form of concurrent automata that extend traditional finite automata by allowing to have several &#34;active states&#34; at once. Concretely, they are given by a set of **places**, and a set of **transitions**.
+
+- **Places** (*circles*) can be viewed as locations in the code, although the correspondance between places and code locations may not be straightforward.
+
+- **Transitions** (*rectangles*) represent an execution step and modify the active states. 
+
+There are arrows from places to transitions indicating that a place is a *precondition* of a transition, and arrows from transitions to places that the place is a *postcondition* of a transition. These will be crucial in the dynamics of the net.
+
+### Transition labelling
+After the graph structure, what may stand out is that there are transitions of different colors. These colors indicate the labelling of the transition, which relate to the main contribution of our model.
+
+In the paper, we give a Petri net semantics for **higher-order open terms**, i.e. for instance $f 1$ where $f$ is unknown. Such open terms are thought to be executed in an unknown context which instantiates $f$. We know nothing of the context, simply that we can (asynchronously) exchange messages with it. Messages are of two kinds: *calls* (or requests) and *returns*. In $f 1$, the net will send a call message to the context, and wait for a return message.
+
+This communication is performed by transition which may be labelled by a polarity and an address. The address represents the port on which the communication is made (for instance it may represent which variable we call) while the polarity represents whether we perform an output (**green transitions**) or an input (**red transitions**). Transitions may be unlabelled, in which case they correspond to an internal action not performing any communication (**blue transitions**).
+
+The user may have noticed a general pattern: at the beginning there is an input transition, which receives the evaluation request from Context. This then drives internal communication which leads to communicating the result back to Context via an output transition.
+
+## The dynamic of Petri nets -- Simple example
+
+Now that we have observed the net of a program, we describe how we can interact with the net, which corresponds to interacting with the original program. The web interface lets you play the role of Context and interact with the net by sending it messages and observe what it outputs. For closed terms, the interaction is simple: we can start the execution, and observe the result. 
+
+The execution of Petri nets is formalised as the flow of tokens through the transitions. Each token resides in a location, representing a thread at a particular point of the code. The state of the net is a collection of such tokens which represent the currently running threads. Each token carries information (usually referred to as a color) about the current context of the thread (which is limited in call-by-name languages). 
+
+At the beginning, there are no tokens. To start the evaluation, it is necessary to send an evaluation request to the net by clicking on the initial input transitions (labelled $Q_0$ in the example). The input transition appears dashed as in the following image:
+
+![Enabled input transition](https://ipatopetrinets.github.io/doc/screens/input-active.png)
+
+Firing it consumes a token in each precondition, which here is vacuous since $Q_0$ does not have any preconditions (no incoming edges) and produces a token in each of the outgoing locations (postconditions), of which there are 3 for this example. You can see the tokens displayed in their locations, with their value. Two tokens have values $\bullet$ which is uninteresting (like $()$ in ML) and denote the fact that we want to start evaluating the two parallel threads. The third token, in the middle, has value 0 and represents the current value of the reference `r`. In this location, there will always be exactly one token from now on, storing the current value of the reference.
+
+The net looks now like:
+
+![After input transition](https://ipatopetrinets.github.io/doc/screens/post-input-active.png)
+
+This transition unlocked two internal (blue) transitions, one corresponding to the left thread and one to the right. We can see they can be fired because their border is dashed. The left transition does correspond to the left thread, firing it consumes the left $\bullet$ and the current value of the reference, and produces a new value for the reference (1), as well as a new $\bullet$ in the next location. That transition represents the write operation on `r`
+
+The green transition cannot yet be fired since there is no token in  its precondition on the right, so only the other internal transition can be fired, which corresponds to the read operation and returns the value `1`. Once this has been fired the green $A_0$ transition, which represents the program returning its value back to context. Firing it displays the return value in a blue popup, and ends the execution (no more transition can be fired). The execution trace, called *causal run*, can be observed at the bottom left, and only contains the firings of visible transitions (input or outputs), not those of neutral transitions.
+
+## More advanced behaviours
+### Inputting tokens with a value
+In some more complex examples, it is necessary for Context to provide a particular value during an input. Consider [the example `x+x`](https://ipatopetrinets.github.io/#16). Since our language is call-by-name, this triggers to evaluation of `x` (a similar program in call-by-value would be `fun f -&gt; f () + f ()`). Triggering the evaluation of `x` corresponds to an output transition (labelled $Q_0$), and receiving the result an input transition ($A_0$). Context, i.e. you, must provide a result for these evaluation requests. This is done when firing the input transition -- the interface then asks for a number. Thus, after clicking on the input transition $A_0$, we get:
+
+![Asking for a number](https://ipatopetrinets.github.io/doc/screens/asking.png)
+
+
+### Exponential stacks
+The previous code `x + x` is an example of *duplication*. There are two evaluations of `x`, which are both sent to the same address $Q_0$. How can the context distinguish between them? Of course in `x+x`, there is a *first* evaluation and a *second* evaluation, but that is no longer the case in e.g. `x|x`. For this purpose of desambiguating several messages on the same address, messages carry more information that identify them completely (similar to nonces in cryptography protocols but with a little bit more structure): they carry an *exponential stack*. This exponential stack can be revealed when hovering either a token value in the net, or an event in the causal run.
+
+For instance the first message output in $Q_0$ for the code `x+x` has data $([l\diamond], \bullet)$ (the first part is the exponential stack), while the second output on $Q_0$ has data $([r\diamond], \bullet)$. Here $l$ and $r$ mean *left* and *right*, and they are used to construct unique values (We could have used an integer encoding as well).
+
+![Exponential stacks](https://ipatopetrinets.github.io/doc/screens/stack.png)
+### Choosing the justifier 
+Consider now the code [`x|x`](https://ipatopetrinets.github.io/#3) where we perform two evaluations of `x` in parallel. Assume that you have fired both outputs on $Q_0$ before answering any input on $A_0$. This can be done by firing all transitions on the left until the output on $Q_0$ and then similarly on the right. The transition $A_0$ is then available to fire, and firing amounts to answering an evaluation request on `x`. But which one? In the previous examples, there were exactly one pending request, but this is not the case anymore. In this scenario, Context (hence you, the user) must choose a *justifier*: which evaluation request am I answering? On the interface this is done by choosing which particular output event we want to answer, in the visible causal run. Allowed choices have a dashed border.
+
+![Choosing the justifier](https://ipatopetrinets.github.io/doc/screens/justifier.png)
+
+
+### Choosing the token to consume
+Interestingly, there is also another ambiguity with the code `x|x`. If we run all the internal transitions before firing any output transition, we end up with two tokens in the place preceeding the output on $Q_0$. When firing $Q_0$, we need to choose which one we want to consume (remember: firing a transition consumes **exactly one** token per preceeding place). This choice can be done by clicking on the token we want to choose. (In more complex situations, there might be several tokens to choose if the transition has several preceeding places). The tokens that can be clicked are marked in red.
+
+![Choosing the tokens to consume](https://ipatopetrinets.github.io/doc/screens/choice-token.png)
+
+### Reverse mode
+Because our model is inherently causal, we can also undo transitions, not necessarily in the order they have been performed. As such, it allows us to go back to a previous state of the net, but *also to explore other ways of reaching a particular state*. This mode is enabled by clicking on `Reverse mode`. In this mode, you can only click on maximal events of the causal run (or maximal instances of neutral transitions in the net) to undo them. At the moment, it is not possible to undo a non-maximal event (which would undo also all its successors), only maximal events.
+
+### Transition functions
+
+As you may have seen, as tokens go through transitions, their values may change. This change is done via *transition functions* of which each transition is equipped. These transition functions describe in a simple stack language how to modify the token values in the preconditions to form the values for the token to be put in the postlocations.
+
+In the following screenshot, the transition function is `UNLEFT; UNDIAMOND` which manipulates exclusively the exponential stack.
+
+![Example of a transition function](https://ipatopetrinets.github.io/doc/screens/transition-func.png)
+
+## Additional comments
+
+### Challenges
+
+In the preset example in the bottom left corner, we include a few programs called &#34;challenges&#34;. In each, the goal is to find an execution yielding the result described in the caption. It can be quite subtle! If the context is written in a suitably expressive language, then all those executions may indeed be realized by a program.
+
+### Type inference
+To build the net, we need to know the type of a program. To this end, we perform a simple type inference. In particular, our model does not handle polymorphism, so after constraint solving all the type variables are replaced by `unit` (e.g. `fun x -&gt; x` gets inferred type `unit -&gt; unit`); and occurrence check is not performed, so some ill-typed programs are allowed by the type inference. Only input well-typed programs.</div>
+    <div class="ui-toc dropup unselectable hidden-print" style="display:none;">
+        <div class="pull-right dropdown">
+            <a id="tocLabel" class="ui-toc-label btn btn-default" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false" title="Table of content">
+                <i class="fa fa-bars"></i>
+            </a>
+            <ul id="ui-toc" class="ui-toc-dropdown dropdown-menu" aria-labelledby="tocLabel">
+            </ul>
+        </div>
+    </div>
+    <div id="ui-toc-affix" class="ui-affix-toc ui-toc-dropdown unselectable hidden-print" data-spy="affix" style="display:none;"></div>
+    
+</body>
+
+</html>
+<script src="https://notes.inria.fr/js/mathjax-config-extra.js"></script>
+
+<script src="https://notes.inria.fr/build/MathJax/MathJax.js" defer></script>
+<script src="https://notes.inria.fr/build/MathJax/config/TeX-AMS-MML_HTMLorMML.js" defer></script>
+<script src="https://notes.inria.fr/build/MathJax/config/Safe.js" defer></script>
+<script src="https://notes.inria.fr/config"></script><script src="https://notes.inria.fr/build/common.a8889fb3fe5d2b7064fc.js" defer="defer"></script><script src="https://notes.inria.fr/build/pretty-pack.02b6a807ca2297e5aa2a.js" defer="defer"></script>
+
+
+
